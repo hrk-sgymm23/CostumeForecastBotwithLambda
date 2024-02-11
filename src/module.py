@@ -9,20 +9,17 @@ load_dotenv(verbose=True)
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
 def get_weather_info():
-    response_info = requests.get(os.environ.get("API_ENDPOINT")).json()
+    try:
+        response_info = requests.get(os.environ.get("API_ENDPOINT")).json()
+        return response_info
+    except requests.RequestException as e:
+        print("天気情報を取得できませんでした", e)
+
+def parse_message(response_info):
     # 天気情報(文面)
-    # 関東甲信地方は高気圧に覆われていますが、気圧の谷や寒気の影響を受けています。東京地方は、曇りで雨の降っている所があります。
-    # １１日は、気圧の谷や寒気の影響を受けるため、曇りで、雷を伴って雨や雪の降る所があるでしょう。伊豆諸島では、雨や雷雨となる所がある見込みです。
-    # １２日は、はじめ気圧の谷や寒気の影響を受けますが、次第に高気圧に覆われるでしょう。このため、曇りで朝まで雷を伴って雪や雨の降る所がありますが、昼前からは晴れるでしょう。伊豆諸島では、雨や雷雨となる所がある見込みです。
-    # 【関東甲信地方】
-    # 関東甲信地方は、晴れや曇りで、雨や雪の降っている所があります。
-    # １１日は、高気圧に覆われますが、気圧の谷や寒気の影響を受ける見込みです。このため、曇りや晴れで、雷を伴って雨や雪の降る所があるでしょう。
-    # １２日は、はじめ気圧の谷や寒気の影響を受けますが、次第に高気圧に覆われるでしょう。このため、曇りのち晴れで、午前中は雷を伴って雪や雨の降る所がある見込みです。
-    # 関東地方と伊豆諸島の海上では、１１日はうねりを伴い波が高く、１２日はしけるでしょう。船舶は高波に注意してください。
     text = response_info["description"]["text"]
 
     #  降水確率、風向き、最高最低気温(三日分が配列で入っている)
-    # {'date': '2024-02-11', 'dateLabel': '今日', 'telop': '曇り', 'detail': {'weather': 'くもり\u3000所により\u3000雨か雪\u3000で\u3000雷を伴う', 'wind': '北の風', 'wave': '０．５メートル'}, 'temperature': {'min': {'celsius': None, 'fahrenheit': None}, 'max': {'celsius': None, 'fahrenheit': None}}, 'chanceOfRain': {'T00_06': '--%', 'T06_12': '--%', 'T12_18': '--%', 'T18_24': '30%'}, 'image': {'title': '曇り', 'url': 'https://www.jma.go.jp/bosai/forecast/img/200.svg', 'width': 80, 'height': 60}}
     forecasts = response_info["forecasts"][0]
     # 空模様
     sky_appearance = forecasts["telop"]
@@ -49,7 +46,7 @@ def get_weather_info():
     {max_temp}
     ## 最低気温
     {min_temp}
-    
+
     ## 0時から6時の降水確率
     {probability_rain_0to6}
     ## 6時から12時の降水確率
@@ -58,15 +55,39 @@ def get_weather_info():
     {probability_rain_12to18}
     ## 18時から24時の降水確率
     {probability_rain_18to24}
+
+    あなたは気象情報から適切な服装を導き出すプロの服装アドバイザーです。
+    上記のテキスト群は本日の気象情報を説明するものになります。
+    記載される記載情報の状況に適した服装を以下のフォーマットと注意事項に従って出力しなさい。
+
+    <回答フォーマット例>
+    🌤今日の衣装予報をお届け！
+    今日は朝xx℃昼xx℃夜xx℃と「xxな日」です。
+    服はxxやxx+xx/xx/xxが必要です。
+    xxやxxでxx対策を！今日も素敵な1日をお過ごしください！
+
+    <注意事項>
+    - 140字以内で出力してください
+    - 上着などといった抽象的なものではなくコートやダウンといった具体的ないるの名前をあげるようにしてください
+    - 暑い場合はこまめな水分補給を！寒い場合は凍結に注意！など服装に関係ない場合も必要であれば入れてください
     """
     
+
     print(weather_message)
 
     return weather_message
 
 
-def recommend_costume():
-    return
+def recommend_costume(weather_message):
+    response = openai.ChatCompletion.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "user", "content": weather_message},
+        ],
+    )
+    recommend_costume_message = response["choices"][0]["message"]["content"]
+
+    return recommend_costume_message
 
 def choose_rails_article(recent_artilce: list[dict[str, str]]) -> list[dict[str, str]]:
     title_list = [article["title"] for article in recent_artilce]

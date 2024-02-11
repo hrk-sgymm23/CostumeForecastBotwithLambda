@@ -3,7 +3,7 @@ import os
 import tweepy
 from dotenv import load_dotenv
 
-from module import recommend_costume, get_weather_info
+from module import recommend_costume, get_weather_info, parse_message
 
 load_dotenv(verbose=True)
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
@@ -24,7 +24,8 @@ def post_tweet(tweet: str) -> None:
 
 
 def lambda_handler():
-    weather_info_message = get_weather_info()
+    responce_info = get_weather_info()
+    weather_info_message = parse_message(responce_info)
     # recommend_costume_info = recommend_costume(weather_info_message)
     # print(f"{recommend_costume_info=}")
 
