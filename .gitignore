@@ -1,3 +1,7 @@
+.aws
+.terraform
+.terraform.lock.hcl
+tweet_bot.zip
 python
 .DS_Store
 # Byte-compiled / optimized / DLL files
