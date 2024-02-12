@@ -26,10 +26,10 @@ def post_tweet(tweet: str) -> None:
 def lambda_handler():
     responce_info = get_weather_info()
     weather_info_message = parse_message(responce_info)
-    # recommend_costume_info = recommend_costume(weather_info_message)
-    # print(f"{recommend_costume_info=}")
+    recommend_costume_info = recommend_costume(weather_info_message)
+    print(f"{recommend_costume_info=}")
 
-    # post_tweet(recommend_costume_info)
+    post_tweet(recommend_costume_info)
 
 
 lambda_handler()
