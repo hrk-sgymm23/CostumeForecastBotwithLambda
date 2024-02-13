@@ -14,5 +14,5 @@ terraform {
 // awsプロバイダーの設定
 provider "aws" {
   // regionを指定
-  region = "us-east-1"
+  region = "ap-northeast-1"
 }
