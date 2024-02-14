@@ -3,8 +3,6 @@ import os
 import tweepy
 from dotenv import load_dotenv
 
-# from module import recommend_costume, get_weather_info, parse_message
-
 import openai
 import requests
 
@@ -13,7 +11,6 @@ TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY")
 TWITTER_API_KEY_SECRET = os.environ.get("TWITTER_API_KEY_SECRET")
 TWITTER_ACCESS_TOKEN = os.environ.get("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_TOKEN_SECRET = os.environ.get("TWITTER_ACCESS_TOKEN_SECRET")
-
 
 def post_tweet(tweet: str) -> None:
     client = tweepy.Client(
@@ -28,7 +25,8 @@ def post_tweet(tweet: str) -> None:
 
 def lambda_handler():
     responce_info = get_weather_info()
-    weather_info_message = parse_message(responce_info)
+    responce_temp_info = get_weather_temp_info()
+    weather_info_message = parse_message(responce_info, responce_temp_info)
     recommend_costume_info = recommend_costume(weather_info_message)
     print(f"{recommend_costume_info=}")
 
@@ -44,7 +42,15 @@ def get_weather_info():
     except requests.RequestException as e:
         print("天気情報を取得できませんでした", e)
 
-def parse_message(response_info):
+def get_weather_temp_info():
+    try:
+        response_temp_info = requests.get(os.environ.get("API_ENDPOINT2")).json()
+        print(response_temp_info)
+        return response_temp_info
+    except requests.RequestException as e:
+        print("気温情報を取得できませんでした", e)
+
+def parse_message(response_info, response_temp_info):
     # 天気情報(文面)
     text = response_info["description"]["text"]
 
@@ -53,15 +59,26 @@ def parse_message(response_info):
     # 空模様
     sky_appearance = forecasts["telop"]
     sky_appearance_detail = forecasts["detail"]["weather"]
-    # 気温
-    # max_temp = forecasts["temperature"]["max"]["celsius"]
-    max_temp = forecasts["temperature"]["max"]["celsius"]
-    min_temp = forecasts["temperature"]["min"]["celsius"]
     # 降水確率
     probability_rain_0to6 = forecasts["chanceOfRain"]["T00_06"]
     probability_rain_6to12 = forecasts["chanceOfRain"]["T06_12"]
     probability_rain_12to18 = forecasts["chanceOfRain"]["T12_18"]
     probability_rain_18to24 = forecasts["chanceOfRain"]["T18_24"]
+
+    # 気温
+    # max_temp = forecasts["temperature"]["max"]["celsius"]
+    # max_temp = forecasts["temperature"]["max"]["celsius"]
+    # min_temp = forecasts["temperature"]["min"]["celsius"]
+
+    temps = []
+    for entry in response_temp_info:
+        for series in entry["timeSeries"]:
+            for area_data in series["areas"]:
+                if "temps" in area_data:
+                    temps.extend(area_data["temps"])
+    max_temp = temps[0]
+    min_temp = temps[1]
+
     # f文字列を使って各値を埋め込み次の関数へ渡す
     weather_message = f"""
     ```
@@ -78,6 +95,7 @@ def parse_message(response_info):
     {max_temp}
     ## 最低気温
     {min_temp}
+    (※気温情報がNone)と表示される場合,気温に関する情報の文は出力しないでください
 
     ## 0時から6時の降水確率
     {probability_rain_0to6}
@@ -111,11 +129,6 @@ def parse_message(response_info):
             - アウターはコートやダウンがいいのかそれともライトなジャケットがいいのか
     - 「今日も素敵な1日をお過ごしください！」を最後の一文に必ず入れてください
     - <重要事項！！>140字以内で出力してください
-
-    以下は例です
-    ```
-    '🌤今日の都内の衣装予報をお届け！\n本日は最高気温12℃最低気温2℃と「寒冷な日」です。\n朝はコートやダウンが必要です。昼間はセーターとジャケットの組み合わせがオススメです。夜はコートやマフラーが必要です。風対策もお忘れなく！今日も素敵な1日をお過ごしください！'
-    ```
     """
     
 
